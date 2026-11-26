@@ -10,7 +10,7 @@
 https://github.com/xx113366/moviepilotV3-plugin
 ```
 
-刷新插件列表后，按名称搜索并安装需要的插件。仓库清单位于 [`package.v3.json`](package.v3.json)。
+刷新插件列表后，按名称搜索并安装需要的插件。仓库清单位于 [`package.json`](package.json) 和 [`package.v3.json`](package.v3.json)。
 
 ## 插件列表
 

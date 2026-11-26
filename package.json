@@ -13,7 +13,7 @@
     },
     "system_version": ">=3.0.0"
   },
-  "diskcleaner": {
+  "DiskCleaner": {
     "name": "磁盘清理",
     "description": "按媒体库空间、下载器做种和整理记录自动清理媒体数据、刮削文件、做种及历史记录",
     "labels": "磁盘清理,媒体库,整理记录,下载器,硬链接",
