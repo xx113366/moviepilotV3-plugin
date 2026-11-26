@@ -5,3 +5,9 @@ https://github.com/madrays/MoviePilot-Plugins
 
 Original author: madrays
 Modifications: added Ugreen Community daily check-in flow and verification.
+
+This repository also contains a modified version of the DiskCleaner plugin from:
+https://github.com/baozaodetudou/MoviePilot-Plugins
+
+Original author: 逗猫
+Modifications: aggregated the MoviePilot V3 plugin, added configuration and documentation improvements, and retained the original plugin attribution.
