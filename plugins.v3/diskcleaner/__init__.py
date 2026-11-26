@@ -37,7 +37,7 @@ class DiskCleaner(_PluginBase):
     plugin_name = "磁盘清理"
     plugin_desc = "按磁盘阈值与做种时长自动清理媒体、做种与MP整理记录"
     plugin_icon = "https://raw.githubusercontent.com/baozaodetudou/MoviePilot-Plugins/refs/heads/main/icons/diskclean.png"
-    plugin_version = "3.0.3"
+    plugin_version = "3.0.4"
     plugin_author = "逗猫"
     author_url = "https://github.com/baozaodetudou"
     plugin_doc_url = "https://github.com/xx113366/moviepilotV3-plugin/blob/main/plugins.v3/diskcleaner/USAGE.md"
@@ -385,307 +385,270 @@ class DiskCleaner(_PluginBase):
             self.save_data("risk_notice_shown_once", True)
         risk_notice_ack_api = f"/api/v1/plugin/{self.__class__.__name__}/ack_risk_notice?apikey={settings.API_TOKEN}"
         manual_clean_api = f"/api/v1/plugin/{self.__class__.__name__}/clean?apikey={settings.API_TOKEN}"
-        delete_module = [
-            {
-                "component": "VAlert",
-                "props": {
-                    "type": "info",
-                    "variant": "tonal",
-                    "density": "compact",
-                    "text": "开启“同步删除下载文件”会在删除做种任务时一并删除实体文件。",
-                    "class": "mb-2",
-                },
-            },
-            {
-                "component": "VRow",
-                "content": [
-                    {
-                        "component": "VCol",
-                        "props": {"cols": 12, "md": 4},
-                        "content": [
-                            {
-                                "component": "VCard",
-                                "props": {"variant": "outlined", "class": "h-100"},
-                                "content": [
-                                    {"component": "VCardTitle", "props": {"class": "text-subtitle-2 py-2"}, "text": "媒体内容"},
-                                    {"component": "VCardSubtitle", "props": {"class": "pb-2"}, "text": "释放媒体库空间"},
-                                    {"component": "VCardText", "props": {"class": "pt-0"}, "content": [
-                                        {"component": "VSwitch", "props": {"density": "compact", "model": "clean_media_data", "label": "删除媒体目录"}},
-                                        {"component": "VSwitch", "props": {"density": "compact", "model": "clean_scrape_data", "label": "删除刮削文件"}},
-                                        {"component": "VSwitch", "props": {"density": "compact", "model": "clean_empty_media_dirs", "label": "删除空媒体目录"}},
-                                    ]},
-                                ],
-                            }
-                        ],
-                    },
-                    {
-                        "component": "VCol",
-                        "props": {"cols": 12, "md": 4},
-                        "content": [
-                            {
-                                "component": "VCard",
-                                "props": {"variant": "outlined", "class": "h-100"},
-                                "content": [
-                                    {"component": "VCardTitle", "props": {"class": "text-subtitle-2 py-2"}, "text": "历史记录"},
-                                    {"component": "VCardSubtitle", "props": {"class": "pb-2"}, "text": "清理 MoviePilot 记录"},
-                                    {"component": "VCardText", "props": {"class": "pt-0"}, "content": [
-                                        {"component": "VSwitch", "props": {"density": "compact", "model": "clean_transfer_history", "label": "删除整理记录"}},
-                                        {"component": "VSwitch", "props": {"density": "compact", "model": "clean_download_history", "label": "删除下载记录"}},
-                                    ]},
-                                ],
-                            }
-                        ],
-                    },
-                    {
-                        "component": "VCol",
-                        "props": {"cols": 12, "md": 4},
-                        "content": [
-                            {
-                                "component": "VCard",
-                                "props": {"variant": "outlined", "class": "h-100"},
-                                "content": [
-                                    {"component": "VCardTitle", "props": {"class": "text-subtitle-2 py-2"}, "text": "下载器任务"},
-                                    {"component": "VCardSubtitle", "props": {"class": "pb-2"}, "text": "处理做种和下载文件"},
-                                    {"component": "VCardText", "props": {"class": "pt-0"}, "content": [
-                                        {"component": "VSwitch", "props": {"density": "compact", "model": "clean_downloader_seed", "label": "删除做种任务"}},
-                                        {"component": "VSwitch", "props": {"density": "compact", "model": "delete_downloader_files", "label": "同步删除下载文件"}},
-                                    ]},
-                                ],
-                            }
-                        ],
-                    },
-                    {
-                        "component": "VCol",
-                        "props": {"cols": 12},
-                        "content": [
-                            {
-                                "component": "VAlert",
-                                "props": {"type": "warning", "variant": "tonal", "density": "compact"},
-                                "content": [
-                                    {"component": "div", "text": "强制清理硬链接可能同时删除下载目录中的做种文件。"},
-                                    {"component": "div", "props": {"class": "mt-1"}, "content": [{"component": "VSwitch", "props": {"density": "compact", "model": "force_hardlink_cleanup", "label": "检查硬链接并强制删除"}}]},
-                                ],
-                            },
-                        ],
-                    },
-                    {
-                        "component": "VCol",
-                        "props": {"cols": 12},
-                        "content": [
-                            {
-                                "component": "VTextarea",
-                                "props": {
-                                    "density": "compact",
-                                    "hideDetails": True,
-                                    "model": "empty_media_exts",
-                                    "label": "空目录检查媒体扩展名",
-                                    "rows": 2,
-                                    "placeholder": "mp4,mkv,ts,iso,rmvb,avi,mov,mpeg,mpg,wmv,3gp,asf,m4v,flv,m2ts,tp,f4v",
-                                },
-                            },
-                            {"component": "div", "props": {"class": "text-caption text-medium-emphasis mt-1"}, "text": "按逗号分隔；目录及其子目录不包含这些扩展名文件时，将删除该目录。"},
-                        ],
-                    },
-                    {
-                        "component": "VCol",
-                        "props": {"cols": 12},
-                        "content": [{"component": "VTextarea", "props": {"density": "compact", "hideDetails": True, "model": "path_blocklist", "label": "禁止删除路径（黑名单）", "rows": 2, "placeholder": "一行一个路径；命中后永不删除"}}],
-                    },
-                    {
-                        "component": "VCol",
-                        "props": {"cols": 12},
-                        "content": [{"component": "VTextarea", "props": {"density": "compact", "hideDetails": True, "model": "path_block_keywords", "label": "禁止删除关键词", "rows": 2, "placeholder": "多个关键词用逗号或换行分隔；路径命中任一关键词即整条跳过"}}],
-                    },
-                ],
-            },
-        ]
-
-        local_library_paths = self._library_paths()
         local_library_text = self._paths_preview_text(
-            [item.as_posix() for item in local_library_paths],
+            [path.as_posix() for path in self._library_paths()],
             limit=12,
         )
-        media_module = [
-            {
-                "component": "VAlert",
-                "props": {"type": "info", "variant": "tonal", "density": "compact", "class": "mb-2"},
-                "content": [
-                    {"component": "div", "text": "实际清理目录来自 MoviePilot 的本地媒体库目录"},
-                    {"component": "div", "props": {"class": "text-caption mt-1"}, "text": f"当前目录：{local_library_text}"},
-                ],
-            },
-            {
-                "component": "VRow",
-                "content": [
-                    {"component": "VCol", "props": {"cols": 12, "md": 4}, "content": [{"component": "VSwitch", "props": {"density": "compact", "model": "monitor_library", "label": "启用媒体库空间告警"}}]},
-                    {
-                        "component": "VCol",
-                        "props": {"cols": 12, "md": 4},
-                        "content": [{"component": "VSelect", "props": {"density": "compact", "hideDetails": True, "model": "library_threshold_mode", "label": "媒体库告警方式", "items": [{"title": "按剩余容量（如 100G）", "value": "size"}, {"title": "按剩余比例（如 10%）", "value": "percent"}]}}],
-                    },
-                    {"component": "VCol", "props": {"cols": 12, "md": 4}, "content": [{"component": "VTextField", "props": {"density": "compact", "hideDetails": True, "model": "library_threshold_value", "label": "媒体库告警阈值", "placeholder": "支持 100G 或 10%"}}]},
-                    {
-                        "component": "VCol",
-                        "props": {"cols": 12},
-                        "content": [
-                            {
-                                "component": "VSelect",
-                                "props": {
-                                    "density": "compact",
-                                    "hideDetails": True,
-                                    "model": "transfer_history_trigger_mode",
-                                    "label": "整理记录优先触发方式（仅流程3）",
-                                    "items": [
-                                        {"title": "命中空间/做种阈值时处理", "value": "threshold"},
-                                        {"title": "每次计划执行都检查最旧记录", "value": "scheduled"},
-                                    ],
-                                },
-                            }
-                        ],
-                    },
-                    {"component": "VCol", "props": {"cols": 12, "md": 6}, "content": [{"component": "VTextField", "props": {"density": "compact", "hideDetails": True, "model": "protect_recent_days", "label": "整理记录近期保护(天)"}}]},
-                    {"component": "VCol", "props": {"cols": 12, "md": 6}, "content": [{"component": "VSwitch", "props": {"density": "compact", "model": "prefer_playback_history", "label": "媒体优先时参考播放历史"}}]},
-                    {
-                        "component": "VCol",
-                        "props": {"cols": 12, "md": 6},
-                        "content": [
-                            {
-                                "component": "VSelect",
-                                "props": {
-                                    "density": "compact",
-                                    "hideDetails": True,
-                                    "model": "media_cleanup_priority",
-                                    "label": "优先处理媒体类型",
-                                    "items": [
-                                        {"title": "电影（默认）", "value": "movie"},
-                                        {"title": "电视剧", "value": "tv"},
-                                    ],
-                                },
-                            }
-                        ],
-                    },
-                    {
-                        "component": "VCol",
-                        "props": {"cols": 12, "md": 6},
-                        "content": [
-                            {
-                                "component": "VSwitch",
-                                "props": {
-                                    "density": "compact",
-                                    "model": "tv_complete_only",
-                                    "label": "仅清理已完结电视剧",
-                                },
-                            }
-                        ],
-                    },
-                    {
-                        "component": "VCol",
-                        "props": {"cols": 12},
-                        "content": [
-                            {
-                                "component": "VTextarea",
-                                "props": {
-                                    "density": "compact",
-                                    "hideDetails": True,
-                                    "model": "media_path_mapping",
-                                    "label": "媒体路径映射(媒体服务器路径:MoviePilot路径)",
-                                    "rows": 2,
-                                    "placeholder": "一行一个映射，如 /data:/mnt/link；路径一致可留空",
-                                },
-                            }
-                        ],
-                    },
-                ],
-            },
-            {
-                "component": "VAlert",
-                "props": {"type": "info", "variant": "tonal", "density": "compact", "class": "mt-2"},
-                "content": [
-                    {"component": "div", "text": "阈值填写示例：按容量填 100G（默认）；按比例填 10%（建议）"},
-                    {"component": "div", "text": "清理范围由 MoviePilot 的本地媒体库目录决定，媒体服务器/媒体库选择不改变删除范围"},
-                    {"component": "div", "text": "路径映射示例：媒体服务器 /data/A.mp4，MoviePilot /mnt/link/A.mp4；填写 /data:/mnt/link"},
-                    {"component": "div", "text": "选择“每次计划执行”可定期处理最旧记录。最短执行间隔和容量上限仍然生效。"},
-                    {"component": "div", "text": "启用“仅清理已完结电视剧”后，仅清理 TMDB 状态为完结/取消的电视剧"},
-                ],
-            },
-        ]
 
-        downloader_module = [
-            {
-                "component": "VRow",
-                "content": [
-                    {"component": "VCol", "props": {"cols": 12, "md": 4}, "content": [{"component": "VSwitch", "props": {"density": "compact", "model": "media_flow_seed_check", "label": "媒体流程删种校验做种时长"}}]},
-                    {"component": "VCol", "props": {"cols": 12, "md": 4}, "content": [{"component": "VSwitch", "props": {"density": "compact", "model": "monitor_download", "label": "启用下载目录空间告警"}}]},
-                    {
-                        "component": "VCol",
-                        "props": {"cols": 12, "md": 4},
-                        "content": [{"component": "VSelect", "props": {"density": "compact", "hideDetails": True, "model": "download_threshold_mode", "label": "下载目录告警方式", "items": [{"title": "按剩余容量（如 100G）", "value": "size"}, {"title": "按剩余比例（如 10%）", "value": "percent"}]}}],
-                    },
-                    {"component": "VCol", "props": {"cols": 12, "md": 4}, "content": [{"component": "VTextField", "props": {"density": "compact", "hideDetails": True, "model": "download_threshold_value", "label": "下载目录告警阈值", "placeholder": "支持 100G 或 10%"}}]},
-                    {"component": "VCol", "props": {"cols": 12, "md": 4}, "content": [{"component": "VSwitch", "props": {"density": "compact", "model": "monitor_downloader", "label": "监听下载器做种时长(独立触发)"}}]},
-                    {"component": "VCol", "props": {"cols": 12, "md": 4}, "content": [{"component": "VTextField", "props": {"density": "compact", "hideDetails": True, "model": "seeding_days", "label": "做种时长阈值(天，按完成时间计算)"}}]},
-                    {
-                        "component": "VCol",
-                        "props": {"cols": 12, "md": 4},
-                        "content": [{"component": "VSelect", "props": {"density": "compact", "hideDetails": True, "chips": True, "multiple": True, "clearable": True, "model": "downloaders", "label": "下载器(多选)", "items": downloader_items}}],
-                    },
-                ],
-            },
-            {
-                "component": "VAlert",
-                "props": {"type": "info", "variant": "tonal", "density": "compact", "class": "mt-2"},
-                "content": [
-                    {"component": "div", "text": "阈值填写示例：按容量填 100G（默认）；按比例填 10%（建议）"},
-                    {"component": "div", "text": "做种时长按完成时间计算；仅在“监听下载器做种时长”开启时生效"},
-                ],
-            },
-        ]
+        def field(component: str, model: str, label: str, **props: Any) -> dict:
+            return {
+                "component": component,
+                "props": {"model": model, "label": label, "density": "compact", "hideDetails": True, **props},
+            }
 
-        post_module = [
-            {
+        def select(model: str, label: str, items: List[Tuple[str, str]], **props: Any) -> dict:
+            return field(
+                "VSelect", model, label,
+                items=[{"title": title, "value": value} for title, value in items],
+                **props,
+            )
+
+        def row(*items: dict, width: int = 6, show: Optional[str] = None) -> dict:
+            return {
                 "component": "VRow",
+                "props": {"show": show} if show else {},
                 "content": [
-                    {"component": "VCol", "props": {"cols": 12, "md": 4}, "content": [{"component": "VSwitch", "props": {"density": "compact", "model": "refresh_mediaserver", "label": "清理后刷新媒体库"}}]},
-                    {
-                        "component": "VCol",
-                        "props": {"cols": 12, "md": 6},
-                        "content": [{"component": "VSelect", "props": {"density": "compact", "hideDetails": True, "chips": True, "multiple": True, "clearable": True, "model": "media_servers", "label": "刷新目标：媒体服务器", "items": media_items}}],
-                    },
-                    {
-                        "component": "VCol",
-                        "props": {"cols": 12, "md": 6},
-                        "content": [{"component": "VSelect", "props": {"density": "compact", "hideDetails": True, "chips": True, "multiple": True, "clearable": True, "model": "media_libraries", "label": "刷新目标：媒体库", "items": media_library_items}}],
-                    },
-                    {
-                        "component": "VCol",
-                        "props": {"cols": 12, "md": 4},
-                        "content": [{"component": "VSelect", "props": {"density": "compact", "hideDetails": True, "model": "refresh_mode", "label": "媒体库刷新方式", "items": [{"title": "定向刷新(优先)", "value": "item"}, {"title": "整库刷新", "value": "root"}]}}],
-                    },
-                    {"component": "VCol", "props": {"cols": 12, "md": 4}, "content": [{"component": "VTextField", "props": {"density": "compact", "hideDetails": True, "model": "refresh_batch_size", "label": "刷新批次大小"}}]},
-                    {
-                        "component": "VCol",
-                        "props": {"cols": 12},
-                        "content": [{"component": "VAlert", "props": {"type": "info", "variant": "tonal", "density": "compact", "text": "媒体目录空间统计与删除按 MoviePilot 本地媒体库目录执行；这里的媒体服务器/媒体库只决定清理后的刷新目标"}}],
-                    },
-                    {"component": "VCol", "props": {"cols": 12, "md": 4}, "content": [{"component": "VSwitch", "props": {"density": "compact", "model": "enable_retry_queue", "label": "启用失败补偿重试"}}]},
-                    {"component": "VCol", "props": {"cols": 12, "md": 4}, "content": [{"component": "VTextField", "props": {"density": "compact", "hideDetails": True, "model": "retry_max_attempts", "label": "最大重试次数"}}]},
-                    {"component": "VCol", "props": {"cols": 12, "md": 4}, "content": [{"component": "VTextField", "props": {"density": "compact", "hideDetails": True, "model": "retry_interval_minutes", "label": "重试间隔(分钟)"}}]},
-                    {"component": "VCol", "props": {"cols": 12, "md": 4}, "content": [{"component": "VTextField", "props": {"density": "compact", "hideDetails": True, "model": "retry_batch_size", "label": "单轮补偿处理数"}}]},
+                    {"component": "VCol", "props": {"cols": 12, "sm": width}, "content": [item]}
+                    for item in items
                 ],
-            },
-        ]
-        advanced_module = [
-            {
-                "component": "VTextField",
+            }
+
+        def caption(text: str) -> dict:
+            return {
+                "component": "div",
+                "props": {"class": "text-caption text-medium-emphasis mt-2"},
+                "text": text,
+            }
+
+        def section(title: str, *items: dict, folded: bool = False) -> dict:
+            return {
+                "component": "details" if folded else "section",
+                "props": {"class": "py-4"},
+                "content": [
+                    {
+                        "component": "summary" if folded else "h3",
+                        "props": {"class": "text-subtitle-1 font-weight-bold mb-3" + (" cursor-pointer" if folded else "")},
+                        "text": title,
+                    },
+                    *items,
+                ],
+            }
+
+        library_mode = "trigger_flow === 'flow_library_mp_downloader'"
+        downloader_mode = "trigger_flow === 'flow_downloader_mp_library'"
+        history_mode = "trigger_flow === 'flow_transfer_oldest'"
+        history_thresholds = f"({history_mode} && transfer_history_trigger_mode !== 'scheduled')"
+        history_seed_guard = f"({history_mode} && clean_downloader_seed && media_flow_seed_check)"
+        library_trigger = f"({library_mode} || {history_thresholds})"
+        download_trigger = f"({downloader_mode} || {history_thresholds})"
+
+        threshold_options = [("剩余容量", "size"), ("剩余比例", "percent")]
+        media_type_options = [("电影", "movie"), ("电视剧", "tv")]
+
+        def space_trigger(prefix: str, label: str, show: str) -> dict:
+            return {
+                "component": "div",
+                "props": {"show": show, "class": "mb-2"},
+                "content": [
+                    field("VSwitch", f"monitor_{prefix}", f"{label}空间不足时检查"),
+                    row(
+                        select(f"{prefix}_threshold_mode", "判断方式", threshold_options),
+                        field("VTextField", f"{prefix}_threshold_value", "剩余空间阈值", placeholder="100G 或 10%"),
+                        show=f"monitor_{prefix}",
+                    ),
+                ],
+            }
+
+        def cleanup_group(title: str, show: str, *items: dict) -> dict:
+            return {
+                "component": "VCard",
                 "props": {
-                    "density": "compact",
-                    "type": "number",
-                    "min": 0,
-                    "model": "cooldown_minutes",
-                    "label": "最短执行间隔（分钟）",
-                    "persistentHint": True,
-                    "hint": "0 表示关闭。设为正数可限制普通定时清理的频率。",
+                    "variant": "outlined",
+                    "color": "{{ " + show + " ? 'primary' : undefined }}",
+                    "class": "h-100",
                 },
+                "content": [
+                    {"component": "VCardTitle", "props": {"class": "text-subtitle-2"}, "text": title},
+                    {"component": "VCardText", "content": list(items)},
+                ],
+            }
+
+        cron_presets = [
+            ("每 8 小时", "0 */8 * * *"),
+            ("每天 03:00", "0 3 * * *"),
+            ("每 30 分钟", "*/30 * * * *"),
+        ]
+        form_sections = [
+            select(
+                "trigger_flow", "工作模式",
+                [
+                    ("媒体库空间清理", "flow_library_mp_downloader"),
+                    ("下载器任务清理", "flow_downloader_mp_library"),
+                    ("整理记录清理", "flow_transfer_oldest"),
+                ],
+            ),
+            section(
+                "执行计划",
+                row(
+                    field("VSwitch", "enabled", "启用定时清理"),
+                    field("VSwitch", "dry_run", "演练模式"),
+                    field("VSwitch", "notify", "发送通知"),
+                    width=4,
+                ),
+                field("VCronField", "cron", "Cron 表达式", placeholder="0 */8 * * *"),
+                {
+                    "component": "div",
+                    "props": {"class": "d-flex flex-wrap ga-2 mt-2"},
+                    "content": [
+                        {
+                            "component": "VBtn",
+                            "props": {
+                                "size": "small",
+                                "variant": "tonal",
+                                "onClick": f"function() {{ cron = '{expression}'; }}",
+                            },
+                            "text": title,
+                        }
+                        for title, expression in cron_presets
+                    ],
+                },
+                caption("Cron 按分、时、日、月、星期填写。演练模式用于预览清理计划。"),
+            ),
+            section(
+                "触发条件",
+                select(
+                    "transfer_history_trigger_mode", "整理记录触发方式",
+                    [("命中任一启用的阈值时检查", "threshold"), ("每次按计划检查最旧记录", "scheduled")],
+                    show=history_mode,
+                ),
+                space_trigger("library", "媒体库", library_trigger),
+                space_trigger("download", "下载目录", download_trigger),
+                field("VSwitch", "monitor_downloader", "做种达到时长阈值时检查", show=download_trigger),
+                row(
+                    field("VTextField", "seeding_days", "做种时长阈值（天）", type="number", min=0),
+                    show=f"({download_trigger} && monitor_downloader) || {history_seed_guard}",
+                ),
+                field(
+                    "VSelect", "downloaders", "检查的下载器", items=downloader_items,
+                    multiple=True, chips=True, clearable=True,
+                    show=f"{downloader_mode} || ({history_thresholds} && monitor_downloader)",
+                ),
+                row(
+                    select("media_cleanup_priority", "优先处理媒体类型", media_type_options),
+                    show=f"{library_mode} || {history_mode}",
+                ),
+                field("VSwitch", "prefer_playback_history", "优先处理长期未播放的媒体", show=library_mode),
+            ),
+            section(
+                "清理对象",
+                row(
+                    cleanup_group(
+                        "媒体内容", library_mode,
+                        field("VSwitch", "clean_media_data", "删除媒体目录"),
+                        field("VSwitch", "clean_scrape_data", "删除刮削文件"),
+                        field("VSwitch", "clean_empty_media_dirs", "删除无媒体文件的目录"),
+                    ),
+                    cleanup_group(
+                        "历史记录", history_mode,
+                        field("VSwitch", "clean_transfer_history", "删除整理记录"),
+                        field("VSwitch", "clean_download_history", "删除下载记录"),
+                    ),
+                    cleanup_group(
+                        "下载器任务", downloader_mode,
+                        field("VSwitch", "clean_downloader_seed", "删除做种任务"),
+                        field(
+                            "VSwitch", "delete_downloader_files", "同步删除下载文件",
+                            show="clean_downloader_seed",
+                        ),
+                        field(
+                            "VSwitch", "media_flow_seed_check", "仅删除达到做种时长的种子",
+                            show=f"{history_mode} && clean_downloader_seed",
+                        ),
+                    ),
+                    width=4,
+                ),
+                {
+                    "component": "VAlert",
+                    "props": {
+                        "type": "warning", "variant": "tonal", "density": "compact", "class": "mt-2",
+                        "show": "clean_downloader_seed && delete_downloader_files",
+                        "text": "删除做种任务时会同步删除下载目录中的实体文件。",
+                    },
+                },
+                caption(f"MoviePilot 本地媒体库目录 · {local_library_text}"),
+            ),
+            section(
+                "安全限制",
+                row(
+                    field("VTextField", "protect_recent_days", "近期整理记录保护（天）", type="number", min=0),
+                    field("VSwitch", "tv_complete_only", "仅清理已完结电视剧"),
+                ),
+                row(
+                    field("VTextField", "max_delete_items", "单轮最多处理条目", type="number", min=1, max=100),
+                    field("VTextField", "max_gb_per_run", "单轮容量上限（GB）", type="number", min=0),
+                    field("VTextField", "max_gb_per_day", "每日容量上限（GB）", type="number", min=0),
+                    width=4,
+                ),
+                caption("容量填 0 表示不限。"),
+            ),
+            section(
+                "清理后处理",
+                field("VSwitch", "refresh_mediaserver", "清理后刷新媒体库"),
+                row(
+                    select("refresh_mode", "刷新方式", [("定向刷新", "item"), ("整库刷新", "root")]),
+                    field(
+                        "VTextField", "refresh_batch_size", "刷新批次大小",
+                        type="number", min=1, show="refresh_mode === 'item'",
+                    ),
+                    show="refresh_mediaserver",
+                ),
+                row(
+                    field(
+                        "VSelect", "media_servers", "刷新目标媒体服务器", items=media_items,
+                        multiple=True, chips=True, clearable=True,
+                    ),
+                    field(
+                        "VSelect", "media_libraries", "刷新目标媒体库", items=media_library_items,
+                        multiple=True, chips=True, clearable=True,
+                    ),
+                    show="refresh_mediaserver",
+                ),
+                field("VSwitch", "enable_retry_queue", "自动重试失败步骤"),
+                row(
+                    field("VTextField", "retry_max_attempts", "最大重试次数", type="number", min=1),
+                    field("VTextField", "retry_interval_minutes", "重试间隔（分钟）", type="number", min=1),
+                    field("VTextField", "retry_batch_size", "单轮补偿处理数", type="number", min=1),
+                    width=4, show="enable_retry_queue",
+                ),
+                folded=True,
+            ),
+            section(
+                "高级设置",
+                field(
+                    "VTextField", "cooldown_minutes", "最短执行间隔（分钟）", type="number", min=0,
+                    hideDetails=False, persistentHint=True, hint="0 表示关闭。用于限制普通定时清理的频率。",
+                ),
+                field(
+                    "VTextarea", "media_path_mapping", "媒体路径映射", rows=2,
+                    placeholder="每行一条，例如 /data:/mnt/link",
+                ),
+                row(
+                    field("VTextarea", "path_blocklist", "禁止删除的路径", rows=2, placeholder="每行一个路径"),
+                    field("VTextarea", "path_block_keywords", "禁止删除关键词", rows=2, placeholder="用逗号或换行分隔"),
+                ),
+                field("VSwitch", "force_hardlink_cleanup", "强制清理硬链接"),
+                caption("强制清理硬链接可能同时删除下载目录中的做种文件。"),
+                field(
+                    "VTextarea", "empty_media_exts", "目录检查使用的媒体扩展名", rows=2,
+                    show="clean_empty_media_dirs", placeholder="用逗号分隔，例如 mp4,mkv,ts",
+                ),
+                field("VSwitch", "clear_history", "保存时清空执行历史"),
+                folded=True,
+            ),
+            {
+                "component": "VBtn",
+                "props": {"variant": "text", "href": self.plugin_doc_url, "target": "_blank"},
+                "text": "打开使用文档",
             },
         ]
 
@@ -895,225 +858,13 @@ class DiskCleaner(_PluginBase):
                 },
             ]
 
-        return manual_button_injector + warning_prefix + [
-            {
-                "component": "VCard",
-                "props": {"variant": "outlined", "class": "mb-3"},
-                "content": [
-                    {
-                        "component": "VCardTitle",
-                        "content": [
-                            {
-                                "component": "VRow",
-                                "props": {"class": "align-center", "noGutters": True},
-                                "content": [
-                                    {
-                                        "component": "VCol",
-                                        "props": {"cols": 12, "md": 8},
-                                        "content": [{"component": "div", "text": "基础设置"}],
-                                    },
-                                    {
-                                        "component": "VCol",
-                                        "props": {"cols": 12, "md": 4, "class": "d-flex justify-md-end mt-2 mt-md-0"},
-                                        "content": [
-                                            {
-                                                "component": "VBtn",
-                                                "props": {
-                                                    "size": "small",
-                                                    "variant": "outlined",
-                                                    "color": "primary",
-                                                    "href": self.plugin_doc_url,
-                                                    "target": "_blank",
-                                                },
-                                                "text": "打开使用文档",
-                                            }
-                                        ],
-                                    },
-                                ],
-                            }
-                        ],
-                    },
-                    {"component": "VDivider"},
-                    {
-                        "component": "VCardText",
-                        "content": [
-                            {
-                                "component": "div",
-                                "props": {
-                                    "onVnodeMounted": (
-                                        "function(){ "
-                                        "if (window.__diskCleanerThresholdWatcher) { clearInterval(window.__diskCleanerThresholdWatcher); } "
-                                        "window.__diskCleanerPrevLibraryMode = (library_threshold_mode || 'size'); "
-                                        "window.__diskCleanerPrevDownloadMode = (download_threshold_mode || 'size'); "
-                                        "window.__diskCleanerThresholdWatcher = setInterval(function(){ "
-                                        "var lm = (library_threshold_mode || 'size'); "
-                                        "var dm = (download_threshold_mode || 'size'); "
-                                        "if (lm !== window.__diskCleanerPrevLibraryMode) { "
-                                        "library_threshold_value = (lm === 'percent') ? '10%' : '100G'; "
-                                        "window.__diskCleanerPrevLibraryMode = lm; "
-                                        "} "
-                                        "if (dm !== window.__diskCleanerPrevDownloadMode) { "
-                                        "download_threshold_value = (dm === 'percent') ? '10%' : '100G'; "
-                                        "window.__diskCleanerPrevDownloadMode = dm; "
-                                        "} "
-                                        "}, 300); "
-                                        "}"
-                                    ),
-                                    "onVnodeBeforeUnmount": (
-                                        "function(){ "
-                                        "if (window.__diskCleanerThresholdWatcher) { "
-                                        "clearInterval(window.__diskCleanerThresholdWatcher); "
-                                        "window.__diskCleanerThresholdWatcher = null; "
-                                        "} "
-                                        "}"
-                                    ),
-                                },
-                            },
-                            {
-                                "component": "VAlert",
-                                "props": {
-                                    "type": "info",
-                                    "variant": "tonal",
-                                    "density": "compact",
-                                    "text": "Cron 决定检查时间，触发条件决定本轮是否清理。",
-                                    "class": "mb-2",
-                                },
-                            },
-                            {
-                                "component": "VRow",
-                                "content": [
-                                    {
-                                        "component": "VCol",
-                                        "props": {"cols": 12},
-                                        "content": [
-                                            {
-                                                "component": "VSelect",
-                                                "props": {
-                                                    "density": "compact",
-                                                    "hideDetails": True,
-                                                    "model": "trigger_flow",
-                                                    "label": "工作模式",
-                                                    "items": [
-                                                        {
-                                                            "title": "媒体库空间清理",
-                                                            "value": "flow_library_mp_downloader",
-                                                        },
-                                                        {
-                                                            "title": "下载器任务清理",
-                                                            "value": "flow_downloader_mp_library",
-                                                        },
-                                                        {
-                                                            "title": "整理记录清理",
-                                                            "value": "flow_transfer_oldest",
-                                                        },
-                                                    ],
-                                                },
-                                            }
-                                        ],
-                                    },
-                                ],
-                            },
-                            {
-                                "component": "VAlert",
-                                "props": {
-                                    "type": "info",
-                                    "variant": "tonal",
-                                    "density": "compact",
-                                    "class": "mt-2",
-                                },
-                                "content": [
-                                    {"component": "div", "text": "媒体库空间清理在媒体库空间不足时处理较旧的媒体。"},
-                                    {"component": "div", "text": "下载器任务清理按下载目录空间和做种时长选取任务。"},
-                                    {"component": "div", "text": "整理记录清理优先检查较旧的整理记录，可按阈值或计划触发。"},
-                                ],
-                            },
-                            {
-                                "component": "VRow",
-                                "content": [
-                                    {"component": "VCol", "props": {"cols": 12, "sm": 6, "md": 3, "lg": 3}, "content": [{"component": "VSwitch", "props": {"density": "compact", "class": "text-no-wrap", "model": "enabled", "label": "启用"}}]},
-                                    {"component": "VCol", "props": {"cols": 12, "sm": 6, "md": 3, "lg": 3}, "content": [{"component": "VSwitch", "props": {"density": "compact", "class": "text-no-wrap", "model": "notify", "label": "通知"}}]},
-                                    {"component": "VCol", "props": {"cols": 12, "sm": 6, "md": 3, "lg": 3}, "content": [{"component": "VSwitch", "props": {"density": "compact", "class": "text-no-wrap", "model": "dry_run", "label": "演练"}}]},
-                                    {"component": "VCol", "props": {"cols": 12, "sm": 6, "md": 3, "lg": 3}, "content": [{"component": "VSwitch", "props": {"density": "compact", "class": "text-no-wrap", "model": "clear_history", "label": "清空历史"}}]},
-                                ],
-                            },
-                            {
-                                "component": "VRow",
-                                "content": [
-                                    {
-                                        "component": "VCol",
-                                        "props": {"cols": 12},
-                                        "content": [{"component": "VCronField", "props": {"density": "compact", "hideDetails": True, "model": "cron", "label": "Cron 执行计划", "placeholder": "0 */8 * * *"}}],
-                                    },
-                                    {
-                                        "component": "VCol",
-                                        "props": {"cols": 12},
-                                        "content": [
-                                            {"component": "VAlert", "props": {"type": "info", "variant": "tonal", "density": "compact", "text": "Cron 是主要执行计划。示例：0 */8 * * *（每 8 小时）、0 3 * * *（每天凌晨 3 点）、*/30 * * * *（每 30 分钟）。"}},
-                                        ],
-                                    },
-                                ],
-                            },
-                            {
-                                "component": "VRow",
-                                "content": [
-                                    {
-                                        "component": "VCol",
-                                        "props": {"cols": 12, "md": 4},
-                                        "content": [{"component": "VTextField", "props": {"density": "compact", "hideDetails": True, "model": "max_delete_items", "label": "单轮最多处理条目"}}],
-                                    },
-                                    {
-                                        "component": "VCol",
-                                        "props": {"cols": 12, "md": 4},
-                                        "content": [{"component": "VTextField", "props": {"density": "compact", "hideDetails": True, "model": "max_gb_per_run", "label": "单轮最多释放(GB)"}}],
-                                    },
-                                    {
-                                        "component": "VCol",
-                                        "props": {"cols": 12, "md": 4},
-                                        "content": [{"component": "VTextField", "props": {"density": "compact", "hideDetails": True, "model": "max_gb_per_day", "label": "每日最多释放(GB)"}}],
-                                    },
-                                ],
-                            },
-                        ],
-                    },
-                ],
-            },
-            {
-                "component": "VCard",
-                "props": {"variant": "outlined"},
-                "content": [
-                    {
-                        "component": "VTabs",
-                        "props": {"model": "tab", "grow": True, "color": "primary"},
-                        "content": [
-                            {"component": "VTab", "props": {"value": "tab-delete"}, "text": "清理对象"},
-                            {"component": "VTab", "props": {"value": "tab-media"}, "text": "媒体库与整理记录"},
-                            {"component": "VTab", "props": {"value": "tab-downloader"}, "text": "下载器与做种"},
-                            {"component": "VTab", "props": {"value": "tab-post"}, "text": "刷新与失败补偿"},
-                            {"component": "VTab", "props": {"value": "tab-advanced"}, "text": "高级设置"},
-                        ],
-                    },
-                    {"component": "VDivider"},
-                    {
-                        "component": "VWindow",
-                        "props": {"model": "tab"},
-                        "content": [
-                            {"component": "VWindowItem", "props": {"value": "tab-delete"}, "content": [{"component": "VCardText", "props": {"class": "pt-4"}, "content": delete_module}]},
-                            {"component": "VWindowItem", "props": {"value": "tab-media"}, "content": [{"component": "VCardText", "props": {"class": "pt-4"}, "content": media_module}]},
-                            {"component": "VWindowItem", "props": {"value": "tab-downloader"}, "content": [{"component": "VCardText", "props": {"class": "pt-4"}, "content": downloader_module}]},
-                            {"component": "VWindowItem", "props": {"value": "tab-post"}, "content": [{"component": "VCardText", "props": {"class": "pt-4"}, "content": post_module}]},
-                            {"component": "VWindowItem", "props": {"value": "tab-advanced"}, "content": [{"component": "VCardText", "props": {"class": "pt-4"}, "content": advanced_module}]},
-                        ],
-                    },
-                ],
-            },
-        ], {
+        return manual_button_injector + warning_prefix + form_sections, {
             "enabled": False,
             "notify": False,
             "onlyonce": False,
             "clear_history": False,
             "dry_run": True,
             "force_hardlink_cleanup": False,
-            "tab": "tab-delete",
             "cron": "0 */8 * * *",
             "cooldown_minutes": 0,
             "trigger_flow": "flow_library_mp_downloader",
