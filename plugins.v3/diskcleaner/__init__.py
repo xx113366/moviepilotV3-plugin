@@ -37,10 +37,10 @@ class DiskCleaner(_PluginBase):
     plugin_name = "磁盘清理"
     plugin_desc = "按磁盘阈值与做种时长自动清理媒体、做种与MP整理记录"
     plugin_icon = "https://raw.githubusercontent.com/baozaodetudou/MoviePilot-Plugins/refs/heads/main/icons/diskclean.png"
-    plugin_version = "3.0.2"
+    plugin_version = "3.0.3"
     plugin_author = "逗猫"
     author_url = "https://github.com/baozaodetudou"
-    plugin_doc_url = "https://github.com/baozaodetudou/MoviePilot-Plugins/blob/main/plugins.v3/diskcleaner/USAGE.md"
+    plugin_doc_url = "https://github.com/xx113366/moviepilotV3-plugin/blob/main/plugins.v3/diskcleaner/USAGE.md"
     plugin_config_prefix = "diskcleaner_"
     plugin_order = 28
     auth_level = 1
@@ -55,7 +55,7 @@ class DiskCleaner(_PluginBase):
     _notify = False
     _cron = "0 */8 * * *"
     _dry_run = True
-    _cooldown_minutes = 60
+    _cooldown_minutes = 0
 
     # 监听开关
     _monitor_download = True
@@ -146,7 +146,7 @@ class DiskCleaner(_PluginBase):
             self._notify = bool(config.get("notify", False))
             self._cron = config.get("cron") or "0 */8 * * *"
             self._dry_run = bool(config.get("dry_run", True))
-            self._cooldown_minutes = int(self._safe_float(config.get("cooldown_minutes"), 60))
+            self._cooldown_minutes = int(self._safe_float(config.get("cooldown_minutes"), 0))
 
             self._monitor_download = bool(config.get("monitor_download", True))
             self._monitor_library = bool(config.get("monitor_library", True))
@@ -240,6 +240,7 @@ class DiskCleaner(_PluginBase):
                     self._scheduler.add_job(
                         func=self._task,
                         trigger=CronTrigger.from_crontab(self._cron),
+                        id="diskcleaner-cron",
                         name=self.plugin_name,
                     )
                     logger.info(f"{self.plugin_name}服务启动，周期：{self._cron}")
@@ -391,41 +392,81 @@ class DiskCleaner(_PluginBase):
                     "type": "info",
                     "variant": "tonal",
                     "density": "compact",
-                    "text": "删除动作将按触发流程串行执行。建议保留“删除整理记录/下载记录”，避免重复命中历史数据。",
+                    "text": "开启“同步删除下载文件”会在删除做种任务时一并删除实体文件。",
                     "class": "mb-2",
                 },
             },
             {
                 "component": "VRow",
                 "content": [
-                    {"component": "VCol", "props": {"cols": 12, "md": 6}, "content": [{"component": "VSwitch", "props": {"density": "compact", "model": "clean_media_data", "label": "删除媒体数据"}}]},
-                    {"component": "VCol", "props": {"cols": 12, "md": 6}, "content": [{"component": "VSwitch", "props": {"density": "compact", "model": "clean_scrape_data", "label": "删除刮削数据"}}]},
-                    {"component": "VCol", "props": {"cols": 12, "md": 6}, "content": [{"component": "VSwitch", "props": {"density": "compact", "model": "clean_transfer_history", "label": "删除整理记录"}}]},
-                    {"component": "VCol", "props": {"cols": 12, "md": 6}, "content": [{"component": "VSwitch", "props": {"density": "compact", "model": "clean_download_history", "label": "删除下载记录"}}]},
                     {
                         "component": "VCol",
-                        "props": {"cols": 12, "md": 12, "class": "d-flex align-center flex-nowrap"},
+                        "props": {"cols": 12, "md": 4},
                         "content": [
                             {
-                                "component": "VSwitch",
-                                "props": {
-                                    "density": "compact",
-                                    "class": "text-no-wrap",
-                                    "model": "force_hardlink_cleanup",
-                                    "label": "检查硬链接并强制删除",
-                                },
-                            },
-                            {
-                                "component": "div",
-                                "props": {"class": "text-caption text-warning text-no-wrap ml-2"},
-                                "text": "⚠️ 危险操作：慎重开启。开启后会检查硬链接并强制删除磁盘对应文件，即使未开启“同步删除文件”，也可能删除做种文件。",
-                            },
+                                "component": "VCard",
+                                "props": {"variant": "outlined", "class": "h-100"},
+                                "content": [
+                                    {"component": "VCardTitle", "props": {"class": "text-subtitle-2 py-2"}, "text": "媒体内容"},
+                                    {"component": "VCardSubtitle", "props": {"class": "pb-2"}, "text": "释放媒体库空间"},
+                                    {"component": "VCardText", "props": {"class": "pt-0"}, "content": [
+                                        {"component": "VSwitch", "props": {"density": "compact", "model": "clean_media_data", "label": "删除媒体目录"}},
+                                        {"component": "VSwitch", "props": {"density": "compact", "model": "clean_scrape_data", "label": "删除刮削文件"}},
+                                        {"component": "VSwitch", "props": {"density": "compact", "model": "clean_empty_media_dirs", "label": "删除空媒体目录"}},
+                                    ]},
+                                ],
+                            }
                         ],
                     },
                     {
                         "component": "VCol",
-                        "props": {"cols": 12, "md": 6},
-                        "content": [{"component": "VSwitch", "props": {"density": "compact", "model": "clean_empty_media_dirs", "label": "删除空媒体目录"}}],
+                        "props": {"cols": 12, "md": 4},
+                        "content": [
+                            {
+                                "component": "VCard",
+                                "props": {"variant": "outlined", "class": "h-100"},
+                                "content": [
+                                    {"component": "VCardTitle", "props": {"class": "text-subtitle-2 py-2"}, "text": "历史记录"},
+                                    {"component": "VCardSubtitle", "props": {"class": "pb-2"}, "text": "清理 MoviePilot 记录"},
+                                    {"component": "VCardText", "props": {"class": "pt-0"}, "content": [
+                                        {"component": "VSwitch", "props": {"density": "compact", "model": "clean_transfer_history", "label": "删除整理记录"}},
+                                        {"component": "VSwitch", "props": {"density": "compact", "model": "clean_download_history", "label": "删除下载记录"}},
+                                    ]},
+                                ],
+                            }
+                        ],
+                    },
+                    {
+                        "component": "VCol",
+                        "props": {"cols": 12, "md": 4},
+                        "content": [
+                            {
+                                "component": "VCard",
+                                "props": {"variant": "outlined", "class": "h-100"},
+                                "content": [
+                                    {"component": "VCardTitle", "props": {"class": "text-subtitle-2 py-2"}, "text": "下载器任务"},
+                                    {"component": "VCardSubtitle", "props": {"class": "pb-2"}, "text": "处理做种和下载文件"},
+                                    {"component": "VCardText", "props": {"class": "pt-0"}, "content": [
+                                        {"component": "VSwitch", "props": {"density": "compact", "model": "clean_downloader_seed", "label": "删除做种任务"}},
+                                        {"component": "VSwitch", "props": {"density": "compact", "model": "delete_downloader_files", "label": "同步删除下载文件"}},
+                                    ]},
+                                ],
+                            }
+                        ],
+                    },
+                    {
+                        "component": "VCol",
+                        "props": {"cols": 12},
+                        "content": [
+                            {
+                                "component": "VAlert",
+                                "props": {"type": "warning", "variant": "tonal", "density": "compact"},
+                                "content": [
+                                    {"component": "div", "text": "强制清理硬链接可能同时删除下载目录中的做种文件。"},
+                                    {"component": "div", "props": {"class": "mt-1"}, "content": [{"component": "VSwitch", "props": {"density": "compact", "model": "force_hardlink_cleanup", "label": "检查硬链接并强制删除"}}]},
+                                ],
+                            },
+                        ],
                     },
                     {
                         "component": "VCol",
@@ -442,11 +483,7 @@ class DiskCleaner(_PluginBase):
                                     "placeholder": "mp4,mkv,ts,iso,rmvb,avi,mov,mpeg,mpg,wmv,3gp,asf,m4v,flv,m2ts,tp,f4v",
                                 },
                             },
-                            {
-                                "component": "div",
-                                "props": {"class": "text-caption text-medium-emphasis mt-1"},
-                                "text": "按逗号分隔；目录及其子目录不包含这些扩展名文件时，将删除该目录。",
-                            },
+                            {"component": "div", "props": {"class": "text-caption text-medium-emphasis mt-1"}, "text": "按逗号分隔；目录及其子目录不包含这些扩展名文件时，将删除该目录。"},
                         ],
                     },
                     {
@@ -457,19 +494,7 @@ class DiskCleaner(_PluginBase):
                     {
                         "component": "VCol",
                         "props": {"cols": 12},
-                        "content": [
-                            {
-                                "component": "VTextarea",
-                                "props": {
-                                    "density": "compact",
-                                    "hideDetails": True,
-                                    "model": "path_block_keywords",
-                                    "label": "禁止删除关键词",
-                                    "rows": 2,
-                                    "placeholder": "多个关键词用逗号或换行分隔；路径命中任一关键词即整条跳过",
-                                },
-                            }
-                        ],
+                        "content": [{"component": "VTextarea", "props": {"density": "compact", "hideDetails": True, "model": "path_block_keywords", "label": "禁止删除关键词", "rows": 2, "placeholder": "多个关键词用逗号或换行分隔；路径命中任一关键词即整条跳过"}}],
                     },
                 ],
             },
@@ -512,7 +537,7 @@ class DiskCleaner(_PluginBase):
                                     "label": "整理记录优先触发方式（仅流程3）",
                                     "items": [
                                         {"title": "命中空间/做种阈值时处理", "value": "threshold"},
-                                        {"title": "每次计划执行都检查最旧记录（仍受冷却/上限限制）", "value": "scheduled"},
+                                        {"title": "每次计划执行都检查最旧记录", "value": "scheduled"},
                                     ],
                                 },
                             }
@@ -579,7 +604,7 @@ class DiskCleaner(_PluginBase):
                     {"component": "div", "text": "阈值填写示例：按容量填 100G（默认）；按比例填 10%（建议）"},
                     {"component": "div", "text": "清理范围由 MoviePilot 的本地媒体库目录决定，媒体服务器/媒体库选择不改变删除范围"},
                     {"component": "div", "text": "路径映射示例：媒体服务器 /data/A.mp4，MoviePilot /mnt/link/A.mp4；填写 /data:/mnt/link"},
-                    {"component": "div", "text": "整理记录优先默认只在阈值命中时运行；选择“每次计划执行”后会定期处理最旧记录，仍受冷却和容量上限限制"},
+                    {"component": "div", "text": "选择“每次计划执行”可定期处理最旧记录。最短执行间隔和容量上限仍然生效。"},
                     {"component": "div", "text": "启用“仅清理已完结电视剧”后，仅清理 TMDB 状态为完结/取消的电视剧"},
                 ],
             },
@@ -589,8 +614,6 @@ class DiskCleaner(_PluginBase):
             {
                 "component": "VRow",
                 "content": [
-                    {"component": "VCol", "props": {"cols": 12, "md": 4}, "content": [{"component": "VSwitch", "props": {"density": "compact", "model": "clean_downloader_seed", "label": "删除做种"}}]},
-                    {"component": "VCol", "props": {"cols": 12, "md": 4}, "content": [{"component": "VSwitch", "props": {"density": "compact", "model": "delete_downloader_files", "label": "同步删除文件"}}]},
                     {"component": "VCol", "props": {"cols": 12, "md": 4}, "content": [{"component": "VSwitch", "props": {"density": "compact", "model": "media_flow_seed_check", "label": "媒体流程删种校验做种时长"}}]},
                     {"component": "VCol", "props": {"cols": 12, "md": 4}, "content": [{"component": "VSwitch", "props": {"density": "compact", "model": "monitor_download", "label": "启用下载目录空间告警"}}]},
                     {
@@ -649,6 +672,20 @@ class DiskCleaner(_PluginBase):
                     {"component": "VCol", "props": {"cols": 12, "md": 4}, "content": [{"component": "VTextField", "props": {"density": "compact", "hideDetails": True, "model": "retry_interval_minutes", "label": "重试间隔(分钟)"}}]},
                     {"component": "VCol", "props": {"cols": 12, "md": 4}, "content": [{"component": "VTextField", "props": {"density": "compact", "hideDetails": True, "model": "retry_batch_size", "label": "单轮补偿处理数"}}]},
                 ],
+            },
+        ]
+        advanced_module = [
+            {
+                "component": "VTextField",
+                "props": {
+                    "density": "compact",
+                    "type": "number",
+                    "min": 0,
+                    "model": "cooldown_minutes",
+                    "label": "最短执行间隔（分钟）",
+                    "persistentHint": True,
+                    "hint": "0 表示关闭。设为正数可限制普通定时清理的频率。",
+                },
             },
         ]
 
@@ -938,7 +975,7 @@ class DiskCleaner(_PluginBase):
                                     "type": "info",
                                     "variant": "tonal",
                                     "density": "compact",
-                                    "text": "先选触发流程，再配置各模块参数；删除会按所选链路串行执行。",
+                                    "text": "Cron 决定检查时间，触发条件决定本轮是否清理。",
                                     "class": "mb-2",
                                 },
                             },
@@ -955,18 +992,18 @@ class DiskCleaner(_PluginBase):
                                                     "density": "compact",
                                                     "hideDetails": True,
                                                     "model": "trigger_flow",
-                                                    "label": "触发流程（单选）",
+                                                    "label": "工作模式",
                                                     "items": [
                                                         {
-                                                            "title": "1. 媒体优先（推荐）",
+                                                            "title": "媒体库空间清理",
                                                             "value": "flow_library_mp_downloader",
                                                         },
                                                         {
-                                                            "title": "2. 下载器优先",
+                                                            "title": "下载器任务清理",
                                                             "value": "flow_downloader_mp_library",
                                                         },
                                                         {
-                                                            "title": "3. 整理记录优先",
+                                                            "title": "整理记录清理",
                                                             "value": "flow_transfer_oldest",
                                                         },
                                                     ],
@@ -985,10 +1022,9 @@ class DiskCleaner(_PluginBase):
                                     "class": "mt-2",
                                 },
                                 "content": [
-                                    {"component": "div", "text": "流程说明："},
-                                    {"component": "div", "text": "1）媒体优先：媒体库空间不足时，按媒体老化顺序处理"},
-                                    {"component": "div", "text": "2）下载器优先：空间不足或做种超期时，按下载器任务处理"},
-                                    {"component": "div", "text": "3）整理记录优先：按 MP 整理记录从旧到新处理，可选择阈值触发或按计划检查"},
+                                    {"component": "div", "text": "媒体库空间清理在媒体库空间不足时处理较旧的媒体。"},
+                                    {"component": "div", "text": "下载器任务清理按下载目录空间和做种时长选取任务。"},
+                                    {"component": "div", "text": "整理记录清理优先检查较旧的整理记录，可按阈值或计划触发。"},
                                 ],
                             },
                             {
@@ -1005,13 +1041,15 @@ class DiskCleaner(_PluginBase):
                                 "content": [
                                     {
                                         "component": "VCol",
-                                        "props": {"cols": 12, "md": 6},
-                                        "content": [{"component": "VCronField", "props": {"density": "compact", "hideDetails": True, "model": "cron", "label": "执行周期", "placeholder": "0 */8 * * *"}}],
+                                        "props": {"cols": 12},
+                                        "content": [{"component": "VCronField", "props": {"density": "compact", "hideDetails": True, "model": "cron", "label": "Cron 执行计划", "placeholder": "0 */8 * * *"}}],
                                     },
                                     {
                                         "component": "VCol",
-                                        "props": {"cols": 12, "md": 6},
-                                        "content": [{"component": "VTextField", "props": {"density": "compact", "hideDetails": True, "model": "cooldown_minutes", "label": "冷却时间(分钟)"}}],
+                                        "props": {"cols": 12},
+                                        "content": [
+                                            {"component": "VAlert", "props": {"type": "info", "variant": "tonal", "density": "compact", "text": "Cron 是主要执行计划。示例：0 */8 * * *（每 8 小时）、0 3 * * *（每天凌晨 3 点）、*/30 * * * *（每 30 分钟）。"}},
+                                        ],
                                     },
                                 ],
                             },
@@ -1047,10 +1085,11 @@ class DiskCleaner(_PluginBase):
                         "component": "VTabs",
                         "props": {"model": "tab", "grow": True, "color": "primary"},
                         "content": [
-                            {"component": "VTab", "props": {"value": "tab-delete"}, "text": "删除动作"},
+                            {"component": "VTab", "props": {"value": "tab-delete"}, "text": "清理对象"},
                             {"component": "VTab", "props": {"value": "tab-media"}, "text": "媒体库与整理记录"},
                             {"component": "VTab", "props": {"value": "tab-downloader"}, "text": "下载器与做种"},
                             {"component": "VTab", "props": {"value": "tab-post"}, "text": "刷新与失败补偿"},
+                            {"component": "VTab", "props": {"value": "tab-advanced"}, "text": "高级设置"},
                         ],
                     },
                     {"component": "VDivider"},
@@ -1062,6 +1101,7 @@ class DiskCleaner(_PluginBase):
                             {"component": "VWindowItem", "props": {"value": "tab-media"}, "content": [{"component": "VCardText", "props": {"class": "pt-4"}, "content": media_module}]},
                             {"component": "VWindowItem", "props": {"value": "tab-downloader"}, "content": [{"component": "VCardText", "props": {"class": "pt-4"}, "content": downloader_module}]},
                             {"component": "VWindowItem", "props": {"value": "tab-post"}, "content": [{"component": "VCardText", "props": {"class": "pt-4"}, "content": post_module}]},
+                            {"component": "VWindowItem", "props": {"value": "tab-advanced"}, "content": [{"component": "VCardText", "props": {"class": "pt-4"}, "content": advanced_module}]},
                         ],
                     },
                 ],
@@ -1075,7 +1115,7 @@ class DiskCleaner(_PluginBase):
             "force_hardlink_cleanup": False,
             "tab": "tab-delete",
             "cron": "0 */8 * * *",
-            "cooldown_minutes": 60,
+            "cooldown_minutes": 0,
             "trigger_flow": "flow_library_mp_downloader",
             "monitor_download": True,
             "monitor_library": True,
@@ -1122,6 +1162,10 @@ class DiskCleaner(_PluginBase):
 
     def get_page(self) -> List[dict]:
         manual_clean_event_api = f"plugin/{self.__class__.__name__}/clean"
+        cron_job = self._scheduler.get_job("diskcleaner-cron") if self._scheduler else None
+        next_run = getattr(cron_job, "next_run_time", None)
+        next_run_text = next_run.strftime("%Y-%m-%d %H:%M %Z") if next_run else "未排定"
+        interval_text = f"{self._cooldown_minutes} 分钟" if self._cooldown_minutes else "关闭"
         usage = self._collect_monitor_usage()
         all_runs = self._collect_run_history()
         recent_runs = all_runs[:10]
@@ -1215,7 +1259,7 @@ class DiskCleaner(_PluginBase):
                         {
                             "component": "div",
                             "props": {"class": "text-caption text-medium-emphasis"},
-                            "text": "本轮无删除明细（阈值未命中/冷却命中/仅补偿检查）",
+                            "text": "本轮无删除明细",
                         }
                     )
 
@@ -1342,7 +1386,10 @@ class DiskCleaner(_PluginBase):
                             {
                                 "component": "div",
                                 "props": {"class": "text-caption text-medium-emphasis"},
-                                "text": f"流程：{self._trigger_flow_label()} | 冷却：{self._cooldown_minutes} 分钟 | 单轮：{self._max_delete_items} 条 / {self._max_gb_per_run} GB",
+                                "text": (
+                                    f"{self._trigger_flow_label()} | Cron {self._cron} | 下次执行 {next_run_text} | "
+                                    f"最短间隔 {interval_text} | 单轮 {self._max_delete_items} 条 / {self._max_gb_per_run} GB"
+                                ),
                             },
                             {
                                 "component": "VRow",
