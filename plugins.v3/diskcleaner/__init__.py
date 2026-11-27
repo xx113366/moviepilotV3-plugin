@@ -37,7 +37,7 @@ class DiskCleaner(_PluginBase):
     plugin_name = "磁盘清理"
     plugin_desc = "按磁盘阈值与做种时长自动清理媒体、做种与MP整理记录"
     plugin_icon = "https://raw.githubusercontent.com/baozaodetudou/MoviePilot-Plugins/refs/heads/main/icons/diskclean.png"
-    plugin_version = "3.0.4"
+    plugin_version = "3.0.5"
     plugin_author = "逗猫"
     author_url = "https://github.com/baozaodetudou"
     plugin_doc_url = "https://github.com/xx113366/moviepilotV3-plugin/blob/main/plugins.v3/diskcleaner/USAGE.md"
@@ -403,34 +403,48 @@ class DiskCleaner(_PluginBase):
                 **props,
             )
 
-        def row(*items: dict, width: int = 6, show: Optional[str] = None) -> dict:
-            return {
-                "component": "VRow",
-                "props": {"show": show} if show else {},
-                "content": [
-                    {"component": "VCol", "props": {"cols": 12, "sm": width}, "content": [item]}
-                    for item in items
-                ],
+        def grid(
+            *items: dict, min_width: int = 220, show: Optional[str] = None, align: str = "start"
+        ) -> dict:
+            layout = {
+                "component": "div",
+                "props": {"style": {
+                    "display": "grid",
+                    "gridTemplateColumns": f"repeat(auto-fit, minmax(min(100%, {min_width}px), 1fr))",
+                    "gap": "14px",
+                    "alignItems": align,
+                }},
+                "content": list(items),
             }
+            return {"component": "div", "props": {"show": show}, "content": [layout]} if show else layout
+
+        stack_style = {"display": "grid", "gridTemplateColumns": "minmax(0, 1fr)", "gap": "14px"}
+        panel_style = {
+            "border": "1px solid rgba(var(--v-theme-on-surface), .15)",
+            "borderRadius": "12px",
+            "padding": "16px",
+            "minWidth": 0,
+        }
 
         def caption(text: str) -> dict:
             return {
                 "component": "div",
-                "props": {"class": "text-caption text-medium-emphasis mt-2"},
+                "props": {"class": "text-caption text-medium-emphasis"},
                 "text": text,
             }
 
         def section(title: str, *items: dict, folded: bool = False) -> dict:
+            heading_class = "text-subtitle-1 font-weight-bold"
             return {
                 "component": "details" if folded else "section",
-                "props": {"class": "py-4"},
+                "props": {"style": panel_style},
                 "content": [
                     {
                         "component": "summary" if folded else "h3",
-                        "props": {"class": "text-subtitle-1 font-weight-bold mb-3" + (" cursor-pointer" if folded else "")},
+                        "props": {"class": heading_class + (" cursor-pointer" if folded else "")},
                         "text": title,
                     },
-                    *items,
+                    {"component": "div", "props": {"style": {**stack_style, "marginTop": "14px"}}, "content": list(items)},
                 ],
             }
 
@@ -448,28 +462,31 @@ class DiskCleaner(_PluginBase):
         def space_trigger(prefix: str, label: str, show: str) -> dict:
             return {
                 "component": "div",
-                "props": {"show": show, "class": "mb-2"},
+                "props": {"style": {**panel_style, "padding": "12px"}, "show": show},
                 "content": [
-                    field("VSwitch", f"monitor_{prefix}", f"{label}空间不足时检查"),
-                    row(
-                        select(f"{prefix}_threshold_mode", "判断方式", threshold_options),
-                        field("VTextField", f"{prefix}_threshold_value", "剩余空间阈值", placeholder="100G 或 10%"),
-                        show=f"monitor_{prefix}",
-                    ),
+                    {
+                        "component": "div",
+                        "props": {"style": stack_style},
+                        "content": [
+                            field("VSwitch", f"monitor_{prefix}", f"{label}空间不足时检查"),
+                            grid(
+                                select(f"{prefix}_threshold_mode", "判断方式", threshold_options),
+                                field("VTextField", f"{prefix}_threshold_value", "剩余空间阈值", placeholder="100G 或 10%"),
+                                min_width=125, show=f"monitor_{prefix}",
+                            ),
+                        ],
+                    },
                 ],
             }
 
-        def cleanup_group(title: str, show: str, *items: dict) -> dict:
+        def cleanup_group(title: str, active_mode: str, *items: dict) -> dict:
+            title_class = f"{{{{ {active_mode} ? 'text-subtitle-2 text-primary' : 'text-subtitle-2' }}}}"
             return {
-                "component": "VCard",
-                "props": {
-                    "variant": "outlined",
-                    "color": "{{ " + show + " ? 'primary' : undefined }}",
-                    "class": "h-100",
-                },
+                "component": "div",
+                "props": {"style": {**panel_style, **stack_style, "padding": "12px", "gap": "8px"}},
                 "content": [
-                    {"component": "VCardTitle", "props": {"class": "text-subtitle-2"}, "text": title},
-                    {"component": "VCardText", "content": list(items)},
+                    {"component": "h4", "props": {"class": title_class}, "text": title},
+                    *items,
                 ],
             }
 
@@ -489,16 +506,16 @@ class DiskCleaner(_PluginBase):
             ),
             section(
                 "执行计划",
-                row(
+                grid(
                     field("VSwitch", "enabled", "启用定时清理"),
                     field("VSwitch", "dry_run", "演练模式"),
                     field("VSwitch", "notify", "发送通知"),
-                    width=4,
+                    min_width=145, align="center",
                 ),
                 field("VCronField", "cron", "Cron 表达式", placeholder="0 */8 * * *"),
                 {
                     "component": "div",
-                    "props": {"class": "d-flex flex-wrap ga-2 mt-2"},
+                    "props": {"class": "d-flex flex-wrap ga-2"},
                     "content": [
                         {
                             "component": "VBtn",
@@ -521,11 +538,16 @@ class DiskCleaner(_PluginBase):
                     [("命中任一启用的阈值时检查", "threshold"), ("每次按计划检查最旧记录", "scheduled")],
                     show=history_mode,
                 ),
-                space_trigger("library", "媒体库", library_trigger),
-                space_trigger("download", "下载目录", download_trigger),
+                grid(
+                    space_trigger("library", "媒体库", library_trigger),
+                    space_trigger("download", "下载目录", download_trigger),
+                    min_width=285,
+                    show=f"{library_trigger} || {download_trigger}",
+                    align="stretch",
+                ),
                 field("VSwitch", "monitor_downloader", "做种达到时长阈值时检查", show=download_trigger),
-                row(
-                    field("VTextField", "seeding_days", "做种时长阈值（天）", type="number", min=0),
+                field(
+                    "VTextField", "seeding_days", "做种时长阈值（天）", type="number", min=0,
                     show=f"({download_trigger} && monitor_downloader) || {history_seed_guard}",
                 ),
                 field(
@@ -533,15 +555,15 @@ class DiskCleaner(_PluginBase):
                     multiple=True, chips=True, clearable=True,
                     show=f"{downloader_mode} || ({history_thresholds} && monitor_downloader)",
                 ),
-                row(
+                grid(
                     select("media_cleanup_priority", "优先处理媒体类型", media_type_options),
-                    show=f"{library_mode} || {history_mode}",
+                    field("VSwitch", "prefer_playback_history", "优先处理长期未播放的媒体", show=library_mode),
+                    show=f"{library_mode} || {history_mode}", align="center",
                 ),
-                field("VSwitch", "prefer_playback_history", "优先处理长期未播放的媒体", show=library_mode),
             ),
             section(
                 "清理对象",
-                row(
+                grid(
                     cleanup_group(
                         "媒体内容", library_mode,
                         field("VSwitch", "clean_media_data", "删除媒体目录"),
@@ -565,7 +587,7 @@ class DiskCleaner(_PluginBase):
                             show=f"{history_mode} && clean_downloader_seed",
                         ),
                     ),
-                    width=4,
+                    min_width=200, align="stretch",
                 ),
                 {
                     "component": "VAlert",
@@ -579,22 +601,23 @@ class DiskCleaner(_PluginBase):
             ),
             section(
                 "安全限制",
-                row(
+                grid(
                     field("VTextField", "protect_recent_days", "近期整理记录保护（天）", type="number", min=0),
                     field("VSwitch", "tv_complete_only", "仅清理已完结电视剧"),
+                    align="center",
                 ),
-                row(
+                grid(
                     field("VTextField", "max_delete_items", "单轮最多处理条目", type="number", min=1, max=100),
                     field("VTextField", "max_gb_per_run", "单轮容量上限（GB）", type="number", min=0),
                     field("VTextField", "max_gb_per_day", "每日容量上限（GB）", type="number", min=0),
-                    width=4,
+                    min_width=190,
                 ),
                 caption("容量填 0 表示不限。"),
             ),
             section(
                 "清理后处理",
                 field("VSwitch", "refresh_mediaserver", "清理后刷新媒体库"),
-                row(
+                grid(
                     select("refresh_mode", "刷新方式", [("定向刷新", "item"), ("整库刷新", "root")]),
                     field(
                         "VTextField", "refresh_batch_size", "刷新批次大小",
@@ -602,7 +625,7 @@ class DiskCleaner(_PluginBase):
                     ),
                     show="refresh_mediaserver",
                 ),
-                row(
+                grid(
                     field(
                         "VSelect", "media_servers", "刷新目标媒体服务器", items=media_items,
                         multiple=True, chips=True, clearable=True,
@@ -614,11 +637,11 @@ class DiskCleaner(_PluginBase):
                     show="refresh_mediaserver",
                 ),
                 field("VSwitch", "enable_retry_queue", "自动重试失败步骤"),
-                row(
+                grid(
                     field("VTextField", "retry_max_attempts", "最大重试次数", type="number", min=1),
                     field("VTextField", "retry_interval_minutes", "重试间隔（分钟）", type="number", min=1),
                     field("VTextField", "retry_batch_size", "单轮补偿处理数", type="number", min=1),
-                    width=4, show="enable_retry_queue",
+                    min_width=180, show="enable_retry_queue",
                 ),
                 folded=True,
             ),
@@ -632,7 +655,7 @@ class DiskCleaner(_PluginBase):
                     "VTextarea", "media_path_mapping", "媒体路径映射", rows=2,
                     placeholder="每行一条，例如 /data:/mnt/link",
                 ),
-                row(
+                grid(
                     field("VTextarea", "path_blocklist", "禁止删除的路径", rows=2, placeholder="每行一个路径"),
                     field("VTextarea", "path_block_keywords", "禁止删除关键词", rows=2, placeholder="用逗号或换行分隔"),
                 ),
@@ -858,7 +881,8 @@ class DiskCleaner(_PluginBase):
                 },
             ]
 
-        return manual_button_injector + warning_prefix + form_sections, {
+        configuration_form = {"component": "div", "props": {"style": stack_style}, "content": form_sections}
+        return manual_button_injector + warning_prefix + [configuration_form], {
             "enabled": False,
             "notify": False,
             "onlyonce": False,
